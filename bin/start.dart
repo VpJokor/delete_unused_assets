@@ -6,16 +6,25 @@ import 'package:path/path.dart' as path;
 import 'helpers/console.dart';
 import 'helpers/helpers.dart';
 
-///
-///   未项目文件引用到的资源文件数: 2892,工程资源文件数: 2892
-///   imageNames.dart未在工程中使用的变量共329个 , 使用中的变量共736个
-///
+/// 脚本的配置信息
+/// 使用前一定一定要记得检查脚本配置
+
 /// 是否展示日志
 bool isShowLog = true;
+
+/// 是否对扫描出的未使用的资源文件进行删除操作
+bool isDeleteUnUsedAsserts = true;
+
 void main(List<String> arguments) async {
   /// 删除放到资源文件夹，但是没有被代码引用到的文件
   delUnUsedAssertFromProgect(arguments);
 }
+
+/// 资源文件夹
+String assetsFolderPath = '';
+
+///被删除后的资源存放位置
+String deletedAssetFolderName = '';
 
 /// 删除放到资源文件夹，但是没有被代码引用到的文件
 /// 返回 imageNames 文件的path
@@ -25,7 +34,7 @@ int assetsFilesCount = 0;
 int usedAssetsCount = 0;
 // 没被项目文件引用到的资源文件数
 int unUsedAssetsCount = 0;
-
+//没有被项目直接引用的资源文件
 Iterable<String> unUsedAssetsPaths = {};
 void delUnUsedAssertFromProgect(List<String> arguments) async {
   String imageNamesPath = '';
@@ -44,8 +53,8 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
 
         print('assetsFolder is $assetsFolder');
 
-        final assetsFolderPath = '$flutterProjectPath/$assetsFolder';
-        final deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
+        assetsFolderPath = '$flutterProjectPath/$assetsFolder';
+        deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
 
         write(
           '\nDon\'t worry I\'m not deleting any asset,\nI just moving it to $deletedAssetFolderName\n',
@@ -135,14 +144,6 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
         assetsFilesCount = assetsFiles.length;
         usedAssetsCount = usedAssetsNames.length;
         unUsedAssetsCount = unUsedAssetsNames.length;
-        // await Helpers.callWithStopwatch(
-        //   () async => await Helpers.deleteFilesByPaths(
-        //     paths: unUsedAssetsPaths,
-        //     assetFolderName: assetsFolderPath,
-        //     deletedAssetFolderName: deletedAssetFolderName,
-        //   ),
-        //   whenDone: (milliseconds) => write('delete: $milliseconds ms'),
-        // );
       },
       whenDone: (milliseconds) => write('Total Time: $milliseconds ms'),
     );
@@ -158,6 +159,7 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
   /// 删除 imageNames中无引用到的资源
   delUnUsedAssertFromImageNames(
       imageNamesPath, arguments.firstOrNull ?? 'lib/resources/images');
+  if (isDeleteUnUsedAsserts) dealResult();
   printResult();
 }
 
@@ -313,8 +315,8 @@ void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
         final flutterProjectPath = Directory.current.path;
         print('assetsFolder is $assetsFolder');
 
-        final assetsFolderPath = '$flutterProjectPath/$assetsFolder';
-        final deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
+        assetsFolderPath = '$flutterProjectPath/$assetsFolder';
+        deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
 
         write(
           '\nDon\'t worry I\'m not deleting any asset,\nI just moving it to $deletedAssetFolderName\n',
@@ -435,15 +437,6 @@ void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
         unUsedImgCount = unUsedFilePath.length;
         // imageNames.dart中所有的文件数
         allImgCount = usedFilePath.length;
-
-        // await Helpers.callWithStopwatch(
-        //       () async => await Helpers.deleteFilesByPaths(
-        //     paths: unUsedAssetsPaths,
-        //     assetFolderName: assetsFolderPath,
-        //     deletedAssetFolderName: deletedAssetFolderName,
-        //   ),
-        //   whenDone: (milliseconds) => write('delete: $milliseconds ms'),
-        // );
       },
       whenDone: (milliseconds) => write('Total Time: $milliseconds ms'),
     );
@@ -616,7 +609,15 @@ void printHeader(String imageNamesPath) {
 }
 
 /// 删除无用的文件
-void dealResult() {}
+void dealResult() {
+  write('开始删除项目中的无用资源文件', colorType: ConsoleColorType.attention);
+  Helpers.deleteFilesByPaths(
+    paths: unUsedAssetsPaths,
+    assetFolderName: assetsFolderPath,
+    deletedAssetFolderName: deletedAssetFolderName,
+  );
+  write('开始删除 imageNames.dart 中的无用资源文件', colorType: ConsoleColorType.attention);
+}
 
 ///打印最后的输出结果
 void printResult() {
