@@ -75,7 +75,13 @@ void dealImageNames() {
       .writeAsString(imageNamesString)
       .then((_) => print('imageNames.dart 备份成功'))
       .catchError((error) => print('imageNames.dart 备份失败: $error'));
+
+  ///对ImgeNames.dart进行扫描
 }
+
+///对ImgeNames.dart进行扫描
+/// 这里要扫描出 unUsedFilePath , unUsedSpecialPath , itemRecords
+void scanImageNames() {}
 
 // 项目文件
 Map<String, String> projectFiles = {};
@@ -103,6 +109,7 @@ final specialRows = <String>{};
 // 资源文件夹路径
 final Map<String, String> assertPath = {};
 final Map<String, String> filePath = {};
+
 final Map<String, String> itemRecords = {};
 final Map<String, Set<String>> specialPath = {};
 final Map<String, Set<String>> unUsedSpecialPath = {};
@@ -634,6 +641,7 @@ void dealResult() {
     }
     recordSink.write('${itemRecords[key]}\n');
   }
+
   Helpers.deleteFilesByPaths(
     paths: unUsedSpecialPathData,
     assetFolderName: assetsFolderPath,
