@@ -76,6 +76,7 @@ final Map<String, String> assertPath = {};
 final Map<String, String> filePath = {};
 final Map<String, String> itemRecords = {};
 final Map<String, Set<String>> specialPath = {};
+final Map<String, Set<String>> unUsedSpecialPath = {};
 // imageNames.dart中没有被引用到的文件数
 int unUsedImgCount = 0;
 // imageNames.dart中所有的文件数
@@ -306,7 +307,6 @@ void delUnUsedAssertFromImageNames(String assetsFolder) {
       () async {
         final Map<String, String> usedFilePath = {};
         final Map<String, Set<String>> usedSpecialPath = {};
-        final usedFile = <String>{};
 
         /// 扫描项目文件，判断资源是否被引用
         print('开始扫描项目文件,判断图片是否被引用');
@@ -323,20 +323,16 @@ void delUnUsedAssertFromImageNames(String assetsFolder) {
                   ) ??
                   '';
 
-              // print('文件path $path');
-
               ///判断 imageNames.xxxx 的变量名有没有被使用
               ///被使用则加入到 usedFilePath(变量)或usedSpecialPath(数组，方法等等) 中
               for (String key in filePath.keys) {
                 if (fileString.contains(key)) {
                   usedFilePath[key] = filePath[key] ?? '';
-                  usedFile.add(filePath[key] ?? '');
                 }
               }
               for (String key in specialPath.keys) {
                 if (fileString.contains(key)) {
                   usedSpecialPath[key] = specialPath[key] ?? {};
-                  usedFile.addAll(specialPath[key] as Iterable<String>);
                 }
               }
               i++;
@@ -351,7 +347,7 @@ void delUnUsedAssertFromImageNames(String assetsFolder) {
             unUsedFilePath[key] = value;
           }
         });
-        final Map<String, Set<String>> unUsedSpecialPath = {};
+
         specialPath.forEach((key, value) {
           if (!usedSpecialPath.containsKey(key)) {
             unUsedSpecialPath[key] = value;
@@ -421,9 +417,8 @@ void dealSpecialRecords(
     final reSource = <String>{};
     for (Match match in valueMatches) {
       // print('提取前 ' + (match.group(0) ?? ''));
-      String strValue = getVariableValue(match.group(0) ?? '', assertPath);
       // print('提取到特殊样本1 的资源: $strValue');
-      reSource.add('$assetsFolderPath/$strValue');
+      reSource.add(getVariableValue(match.group(0) ?? '', assertPath));
     }
     specialPath[special1VariableName] = reSource;
     itemRecords[special1VariableName] = matchStr;
@@ -448,9 +443,8 @@ void dealSpecialRecords(
     final reSource = <String>{};
     for (Match match in valueMatches) {
       // print('提取前 ' + (match.group(0) ?? ''));
-      String strValue = getVariableValue(match.group(0) ?? '', assertPath);
       // print('提取到特殊样本2 的资源: $strValue');
-      reSource.add('$assetsFolderPath/$strValue');
+      reSource.add(getVariableValue(match.group(0) ?? '', assertPath));
     }
     specialPath[special2VariableName] = reSource;
     itemRecords[special2VariableName] = matchStr;
@@ -589,6 +583,8 @@ void dealResult() {
       File('$deletedAssetFolderName/$currentTime/from_imageNames/log');
   var logSink = logFile.openWrite();
   var recordSink = recordFile.openWrite();
+
+  ///imageNames.dart中变量的处理
   for (String key in unUsedFilePath.keys) {
     write(
         '删除文件 key: $key value: ${unUsedFilePath[key]} \n record: ${itemRecords[key]}\n',
@@ -605,6 +601,37 @@ void dealResult() {
         '删除文件\n key: $key \n value: ${unUsedFilePath[key]} \n record: ${itemRecords[key]}\n\n');
     recordSink.write('${itemRecords[key]}\n');
   }
+
+  Set<String> unUsedSpecialPathData = {};
+
+  ///imageNames.dart中数组和方法的处理
+  for (String key in unUsedSpecialPath.keys) {
+    write(
+        '删除文件 key: $key , value: ${unUsedSpecialPath[key]} \n record: ${itemRecords[key]}\n');
+
+    ///删除 imageNames.darth中的记录
+    if (itemRecords[key] != null) {
+      imageNamesString =
+          imageNamesString.replaceFirst('  ${itemRecords[key]!}\n', '');
+    }
+    if (unUsedSpecialPath[key] != null) {
+      logSink.write('删除文件\n key: $key \n ');
+      logSink.write('value:\n ');
+      for (String fileKey in unUsedSpecialPath[key]!) {
+        unUsedSpecialPathData.add(fileKey);
+        logSink.write('    $fileKey \n ');
+      }
+      logSink.write('record: ${itemRecords[key]}\n\n');
+    }
+    recordSink.write('${itemRecords[key]}\n');
+  }
+  Helpers.deleteFilesByPaths(
+    paths: unUsedSpecialPathData,
+    assetFolderName: assetsFolderPath,
+    deletedAssetFolderName:
+        '$deletedAssetFolderName/$currentTime/from_imageNames/files',
+  );
+
   recordSink.close();
   logSink.close();
 
@@ -617,14 +644,8 @@ void dealResult() {
 
 ///打印最后的输出结果
 void printResult() {
-  for (String item in unUsedAssetsPaths) {
-    print('未在项目中直接被使用的资源: $item');
-  }
-  // for (String item in allRows) {
-  //   print('变量记录 $item');
-  // }
-  // for (String item in specialRows) {
-  //   print('特殊文件记录 $item');
+  // for (String item in unUsedAssetsPaths) {
+  //   print('未在项目中直接被使用的资源: $item');
   // }
   write('资源文件夹路径 $assertPath');
   write('匹配到结果 ${matchRows.length} 条记录');
@@ -633,8 +654,15 @@ void printResult() {
   write('处理未匹配到到特殊记录共 ${specialPath.keys.length}条');
   write("共${filePath.length + specialPath.keys.length}条样本记录");
 
-  write('未项目文件引用到的资源文件数: $unUsedAssetsCount,工程资源文件数: $assetsFilesCount',
+  write('\n================================================\n',
       colorType: ConsoleColorType.attention);
-  write('imageNames.dart未在工程中使用的变量共$unUsedImgCount个 , 使用中的变量共$allImgCount个',
+  write(
+      '被删除的资源没有被真正的删除哦，他们被存放在了 deleted_assets 目录下，要恢复资源可以根据 deleted_assets 下的日志进行恢复 \n',
+      colorType: ConsoleColorType.attention);
+  write('未项目文件引用到的资源文件数: $unUsedAssetsCount,工程资源文件数: $assetsFilesCount\n',
+      colorType: ConsoleColorType.attention);
+  write('imageNames.dart未在工程中使用的变量共$unUsedImgCount个 , 使用中的变量共$allImgCount个\n',
+      colorType: ConsoleColorType.attention);
+  write('\n================================================\n',
       colorType: ConsoleColorType.attention);
 }
