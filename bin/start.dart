@@ -16,7 +16,9 @@ bool isShowLog = true;
 bool isDeleteUnUsedAsserts = true;
 
 /// 被扫的功能根目录
-final flutterProjectPath = Directory.current.path;
+/// final flutterProjectPath = Directory.current.path;
+/// final flutterProjectPath = '/Users/light/IdeaProjects/AnswerPlanet';
+final flutterProjectPath = '/Users/light/IdeaProjects/AnswerPlanet';
 
 ///资源文件夹
 String assetsFolderPath = '$flutterProjectPath/lib/resources/images';
