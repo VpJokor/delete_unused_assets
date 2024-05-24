@@ -23,6 +23,9 @@ final flutterProjectPath = '/Users/light/IdeaProjects/AnswerPlanet';
 ///资源文件夹
 String assetsFolderPath = '$flutterProjectPath/lib/resources/images';
 
+///iamgeNames.dart所在的文件夹
+String imageNamesPath = '$flutterProjectPath/lib/common/imageNames.dart';
+
 ///被删除后的资源存放位置
 String deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
 
@@ -43,9 +46,35 @@ final ignoreDirectories = [
   'deleted_assets',
 ];
 
+/// 脚本优化
+/// 先全局扫 imageNames.dart
+/// 删除 imageNames.dart 里的相关记录
+/// 全局扫删除无用记录
 void main(List<String> arguments) async {
-  /// 删除放到资源文件夹，但是没有被代码引用到的文件
+  File imageNamesFile = File(imageNamesPath);
+  if (imageNamesFile.existsSync()) {
+    imageNamesString = imageNamesFile.readAsStringSync();
+    if (imageNamesString == '') {
+      write('找不到文件 imageNames.dart ', colorType: ConsoleColorType.error);
+      return;
+    }
+  } else {
+    write('找不到文件 imageNames.dart ', colorType: ConsoleColorType.error);
+    return;
+  }
+  dealImageNames();
   delUnUsedAssertFromProgect(arguments);
+}
+
+void dealImageNames() {
+  /// 对imageNames.dart进行备份
+  File imageNamesBak = File(
+      '$deletedAssetFolderName/$currentTime/from_imageNames/imageNames.dart');
+  imageNamesBak.createSync(recursive: true);
+  imageNamesBak
+      .writeAsString(imageNamesString)
+      .then((_) => print('imageNames.dart 备份成功'))
+      .catchError((error) => print('imageNames.dart 备份失败: $error'));
 }
 
 // 项目文件
@@ -81,8 +110,7 @@ final Map<String, Set<String>> unUsedSpecialPath = {};
 int unUsedImgCount = 0;
 // imageNames.dart中所有的文件数
 int allImgCount = 0;
-// imageNames.dart 的文件路径
-String imageNamesPath = '';
+String imageNamesString = '';
 void delUnUsedAssertFromProgect(List<String> arguments) async {
   if (arguments.firstOrNull == '-h') {
     write(
@@ -131,7 +159,6 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
             int i = 0;
             for (final path in projectFilesPaths) {
               if (isShowLog) print('项目文件[$i]: $path ，判断资源文件被引用的情况...');
-              if (path.contains('imageNames.dart')) imageNamesPath = path;
               final fileString = Helpers.tryDo(
                     () => File(path).readAsStringSync(),
                     orElse: (__, _) => '',
@@ -213,11 +240,6 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
 /// 2. 全局每个文件去扫看 imageNames样本记录有没有被引用到
 void delUnUsedAssertFromImageNames(String assetsFolder) {
   if (isShowLog) printHeader(imageNamesPath);
-  final imageNamesString = Helpers.tryDo(
-        () => File(imageNamesPath).readAsStringSync(),
-        orElse: (__, _) => '',
-      ) ??
-      '';
 
   RegExp regex =
       RegExp(r"static const String \w+ =\s?\n?\s*\w+ \+ '/\S+\.png';");
@@ -562,19 +584,6 @@ void dealResult() {
     deletedAssetFolderName:
         '$deletedAssetFolderName/$currentTime/from_imageNames/files',
   );
-
-  String imageNamesString = Helpers.tryDo(
-        () => File(imageNamesPath).readAsStringSync(),
-        orElse: (__, _) => '',
-      ) ??
-      '';
-  File imageNamesBak = File(
-      '$deletedAssetFolderName/$currentTime/from_imageNames/imageNames.dart');
-  imageNamesBak.createSync(recursive: true);
-  imageNamesBak
-      .writeAsString(imageNamesString)
-      .then((_) => print('imageNames.dart 备份成功'))
-      .catchError((error) => print('imageNames.dart 备份失败: $error'));
 
   File recordFile =
       File('$deletedAssetFolderName/$currentTime/from_imageNames/records');
