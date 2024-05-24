@@ -34,10 +34,10 @@ class Helpers {
       }
 
       if (!isDirectory) {
-        map[basename] = fileOrDir.path;
+        // map[basename] = fileOrDir.path;
+        map[fileOrDir.path.replaceAll('/', '_')] = fileOrDir.path;
       }
     }
-
     return map;
   }
 
