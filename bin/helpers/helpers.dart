@@ -61,10 +61,14 @@ class Helpers {
 
   static Future<File> _moveFile(String sourcePath, String newPath) async {
     final sourceFile = File(sourcePath);
+    // 检查源文件是否存在
+    if (!await sourceFile.exists()) {
+      // throw FileSystemException('Source file does not exist');
+      return sourceFile;
+    }
     try {
       //create Directory if not exist
       await Directory(path.dirname(newPath)).create(recursive: true);
-
       return await sourceFile.rename(newPath);
     } on FileSystemException catch (_) {
       // if rename fails, copy the source file and then delete it
