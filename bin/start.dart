@@ -6,46 +6,27 @@ import 'package:path/path.dart' as path;
 import 'helpers/console.dart';
 import 'helpers/helpers.dart';
 
-bool isShowLog = false;
-
+///
+///   未项目文件引用到的资源文件数: 2892,工程资源文件数: 2892
+///   imageNames.dart未在工程中使用的变量共329个 , 使用中的变量共736个
+///
+/// 是否展示日志
+bool isShowLog = true;
 void main(List<String> arguments) async {
   /// 删除放到资源文件夹，但是没有被代码引用到的文件
   delUnUsedAssertFromProgect(arguments);
 }
 
-// void main(List<String> arguments) async {
-//   final assetsFolder = 'lib/resources/images';
-//   final flutterProjectPath = Directory.current.path;
-//   final assetsFolderPath = '$flutterProjectPath/$assetsFolder';
-//   final deletedAssetFolderName = '$flutterProjectPath/deleted_assets';
-//
-//   final ignoreDirectories = [
-//     assetsFolderPath,
-//     deletedAssetFolderName,
-//     'assets',
-//     'android',
-//     'build',
-//     'ios',
-//     'web',
-//     '.dart_tool',
-//     '.git',
-//     '.gradle',
-//     'plugin'
-//   ];
-//
-//   final projectFiles = Helpers.getFilesNameWithPath(
-//     Directory('$flutterProjectPath/lib/pages'),
-//     {},
-//     ignoreDirectories: ignoreDirectories,
-//   );
-//
-//   for (String key in projectFiles.keys) {
-//     print('key: $key , value: ${projectFiles[key]}');
-//   }
-// }
-
 /// 删除放到资源文件夹，但是没有被代码引用到的文件
 /// 返回 imageNames 文件的path
+// 工程资源文件数
+int assetsFilesCount = 0;
+// 被项目文件引用到到资源文件数
+int usedAssetsCount = 0;
+// 没被项目文件引用到的资源文件数
+int unUsedAssetsCount = 0;
+
+Iterable<String> unUsedAssetsPaths = {};
 void delUnUsedAssertFromProgect(List<String> arguments) async {
   String imageNamesPath = '';
 
@@ -85,12 +66,14 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
           '.dart_tool',
           '.git',
           '.gradle',
-          'plugin'
+          'plugin',
+          'resources',
+          'deleted_assets',
         ];
 
         /// 资源文件
         final assetsFiles = Helpers.callWithStopwatch(
-          () => Helpers.getFilesNameWithPath(Directory(assetsPath), {}),
+          () => Helpers.getFilesNameWithPath(Directory(assetsPath), true, {}),
           whenDone: (milliseconds) => write(
             'collect assetsFiles: $milliseconds ms',
           ),
@@ -100,6 +83,7 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
         final projectFiles = Helpers.callWithStopwatch(
           () => Helpers.getFilesNameWithPath(
             Directory(flutterProjectPath),
+            false,
             {},
             ignoreDirectories: ignoreDirectories,
           ),
@@ -118,7 +102,7 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
             final projectFilesPaths = projectFiles.values;
             int i = 0;
             for (final path in projectFilesPaths) {
-              if (isShowLog) print('描项目文件[$i]: $path ，判断资源文件被引用的情况...');
+              if (isShowLog) print('项目文件[$i]: $path ，判断资源文件被引用的情况...');
               if (path.contains('imageNames.dart')) imageNamesPath = path;
               final fileString = Helpers.tryDo(
                     () => File(path).readAsStringSync(),
@@ -140,31 +124,17 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
           whenDone: (milliseconds) => write('search: $milliseconds ms'),
         );
 
-        /// 工程资源文件数
-        int assetsFilesCount = 0;
-
-        /// 被项目文件引用到到资源文件数
-        int usedAssetsCount = 0;
-
-        /// 没被项目文件引用到的资源文件数
-        int unUsedAssetsCount = 0;
         print('项目文件扫描结束');
 
         /// 扫描项目文件，得出的扫描结果
         final unUsedAssets = assetsFiles.entries
             .where((element) => !usedAssetsNames.contains(element.key));
         final unUsedAssetsNames = unUsedAssets.map((asset) => asset.key);
-        final unUsedAssetsPaths = unUsedAssets.map((asset) => asset.value);
+        unUsedAssetsPaths = unUsedAssets.map((asset) => asset.value);
+
         assetsFilesCount = assetsFiles.length;
         usedAssetsCount = usedAssetsNames.length;
         unUsedAssetsCount = unUsedAssetsNames.length;
-        write('Assets Files count: $assetsFilesCount',
-            colorType: ConsoleColorType.attention);
-        write('Used Assets count: $usedAssetsCount',
-            colorType: ConsoleColorType.attention);
-        write('UnUsed Assets count: $unUsedAssetsCount',
-            colorType: ConsoleColorType.attention);
-
         // await Helpers.callWithStopwatch(
         //   () async => await Helpers.deleteFilesByPaths(
         //     paths: unUsedAssetsPaths,
@@ -188,11 +158,16 @@ void delUnUsedAssertFromProgect(List<String> arguments) async {
   /// 删除 imageNames中无引用到的资源
   delUnUsedAssertFromImageNames(
       imageNamesPath, arguments.firstOrNull ?? 'lib/resources/images');
+  printResult();
 }
 
 /// 删除 imageNames中无引用到的资源
 /// 1. 从imageNames提取文件信息
 /// 2. 全局每个文件去扫看 imageNames样本记录有没有被引用到
+// imageNames.dart中没有被引用到的文件数
+int unUsedImgCount = 0;
+// imageNames.dart中所有的文件数
+int allImgCount = 0;
 void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
   ///1. 从 imageNames.dart 中读取文件信息
   /// 扫描imageNames.dart 的想法
@@ -362,11 +337,13 @@ void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
           'plugin',
           'resources',
           '.idea',
+          'resources',
+          'deleted_assets',
         ];
 
         /// 资源文件
         final assetsFiles = Helpers.callWithStopwatch(
-          () => Helpers.getFilesNameWithPath(Directory(assetsPath), {}),
+          () => Helpers.getFilesNameWithPath(Directory(assetsPath), true, {}),
           whenDone: (milliseconds) => write(
             'collect assetsFiles: $milliseconds ms',
           ),
@@ -376,6 +353,7 @@ void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
         final projectFiles = Helpers.callWithStopwatch(
           () => Helpers.getFilesNameWithPath(
             Directory(flutterProjectPath),
+            false,
             {},
             ignoreDirectories: ignoreDirectories,
           ),
@@ -453,16 +431,11 @@ void delUnUsedAssertFromImageNames(String imageNamesPath, String assetsFolder) {
             print('未在项目中使用的资源 key: $key , value: ${unUsedFilePath[key]}');
           }
         }
+        // imageNames.dart中没有被引用到的文件数
+        unUsedImgCount = unUsedFilePath.length;
+        // imageNames.dart中所有的文件数
+        allImgCount = usedFilePath.length;
 
-        print(
-            'imageNames.dart未在工程中使用的变量共${unUsedFilePath.length}个 , 使用中的变量共${usedFilePath.length}个');
-        // write('Assets Files count: $assetsFilesCount',
-        //     colorType: ConsoleColorType.attention);
-        // write('Used Assets count: $usedAssetsCount',
-        //     colorType: ConsoleColorType.attention);
-        // write('UnUsed Assets count: $unUsedAssetsCount',
-        //     colorType: ConsoleColorType.attention);
-        //
         // await Helpers.callWithStopwatch(
         //       () async => await Helpers.deleteFilesByPaths(
         //     paths: unUsedAssetsPaths,
@@ -640,4 +613,18 @@ void printHeader(String imageNamesPath) {
       '===================================================================================================================');
   print(
       '===================================================================================================================');
+}
+
+/// 删除无用的文件
+void dealResult() {}
+
+///打印最后的输出结果
+void printResult() {
+  for (String item in unUsedAssetsPaths) {
+    print('未在项目中直接被使用的资源: $item');
+  }
+  write('未项目文件引用到的资源文件数: $unUsedAssetsCount,工程资源文件数: $assetsFilesCount',
+      colorType: ConsoleColorType.attention);
+  write('imageNames.dart未在工程中使用的变量共$unUsedImgCount个 , 使用中的变量共$allImgCount个',
+      colorType: ConsoleColorType.attention);
 }

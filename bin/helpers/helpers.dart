@@ -16,6 +16,7 @@ class Helpers {
 
   static Map<String, String> getFilesNameWithPath(
     Directory dir,
+    bool isAssert,
     Map<String, String> map, {
     List<String> ignoreDirectories = const [],
   }) {
@@ -28,14 +29,15 @@ class Helpers {
         //Stay safe recursion function.
         getFilesNameWithPath(
           fileOrDir,
+          isAssert,
           map,
           ignoreDirectories: ignoreDirectories,
         );
       }
-
       if (!isDirectory) {
-        // map[basename] = fileOrDir.path;
-        map[fileOrDir.path.replaceAll('/', '_')] = fileOrDir.path;
+        // map[fileOrDir.path.replaceAll('/', '_')] = fileOrDir.path;
+        map[isAssert ? basename : fileOrDir.path.replaceAll('/', '_')] =
+            fileOrDir.path;
       }
     }
     return map;
