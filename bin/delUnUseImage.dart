@@ -5,6 +5,11 @@ import 'helpers/helpers.dart';
 
 /// 脚本的配置信息
 /// 使用前一定一定要记得检查脚本配置
+/// 注意 注意 ！！！
+///
+/// flutterProjectPath 和 ignoreDirectories 一定一定要配置 ！！！
+///
+/// 注意 注意 ！！！
 
 /// 是否展示日志
 bool isShowLog = true;
@@ -59,8 +64,11 @@ void main(List<String> arguments) async {
     write('找不到文件 imageNames.dart ', colorType: ConsoleColorType.error);
     return;
   }
+
+  /// 资源文件
+  assetsFiles =
+      Helpers.getFilesNameWithPath(Directory(assetsFolderPath), true, {});
   dealImageNames();
-  printResult();
 }
 
 String currentTime = '';
@@ -69,8 +77,8 @@ void dealImageNames() {
   DateTime now = DateTime.now();
   currentTime =
       '${now.year}_${now.month.toString().padLeft(2, '0')}_${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}_${now.minute.toString().padLeft(2, '0')}_${now.second.toString().padLeft(2, '0')}';
-  File imageNamesBak = File(
-      '$deletedAssetFolderName/$currentTime/from_imageNames/imageNames.dart');
+  File imageNamesBak =
+      File('$deletedAssetFolderName/$currentTime/imageNames.dart.bak');
   imageNamesBak.createSync(recursive: true);
   imageNamesBak
       .writeAsString(imageNamesString)
@@ -84,6 +92,7 @@ void dealImageNames() {
   );
   scanImageNames();
   delFromImageNames();
+  delUnusedImage();
 }
 
 ///对ImgeNames.dart进行扫描
@@ -171,8 +180,7 @@ void scanImageNames() {
   for (Match match in matches1) {
     String matchStr = match.group(0) ?? '';
     specialRows.add(matchStr);
-    String special1VariableName =
-        'ImageNames.${getSpecial1VariableName(matchStr)}(';
+    String special1VariableName = getSpecial1VariableName(matchStr);
     // print('提取到特殊样本1 的方法名 $special1VariableName');
     RegExp valueRegex = RegExp(r"\S+ \+ '/\S+\.png'");
     Iterable<Match> valueMatches = valueRegex.allMatches(matchStr);
@@ -198,8 +206,7 @@ void scanImageNames() {
     String matchStr = match.group(0) ?? '';
     specialRows.add(matchStr);
     // print('匹配到的样本资源2:\n' + matchStr);
-    String special2VariableName =
-        'ImageNames.${getSpecial2VariableName(matchStr)}';
+    String special2VariableName = getSpecial2VariableName(matchStr);
     // print('提取到特殊样本2 的资源名 $special2VariableName');
     RegExp valueRegex = RegExp(r"\S+ \+ '/\S+\.png'");
     Iterable<Match> valueMatches = valueRegex.allMatches(matchStr);
@@ -279,11 +286,9 @@ void scanImageNames() {
 
 /// 从Imagenames.dart中删除无用记录
 void delFromImageNames() {
-  File recordFile =
-      File('$deletedAssetFolderName/$currentTime/from_imageNames/records');
+  File recordFile = File('$deletedAssetFolderName/$currentTime/records');
   recordFile.createSync(recursive: true);
-  File logFile =
-      File('$deletedAssetFolderName/$currentTime/from_imageNames/log');
+  File logFile = File('$deletedAssetFolderName/$currentTime/log');
   var logSink = logFile.openWrite();
   var recordSink = recordFile.openWrite();
 
@@ -340,15 +345,10 @@ void delFromImageNames() {
 
 ///打印最后的输出结果
 void printResult() {
-  // for (String item in unUsedAssetsPaths) {
-  //   print('未在项目中直接被使用的资源: $item');
-  // }
   write('资源文件夹路径 $assertPath');
-  write('匹配到结果 ${matchRows.length} 条记录');
-  write('匹配到${unMatchRows.length} 条特殊记录 , 其中有${assertPath.length} 条是资源文件夹路径');
-  write('一共有${allRows.length} 原始条记录');
-  write('处理未匹配到到特殊记录共 ${specialPath.keys.length}条');
-  write("共${filePath.length + specialPath.keys.length}条样本记录");
+  write(
+      'imageNames.dart中有${unUsedSpecialPath.length + unUsedSpecialPath.length} 条记录未被引用');
+  write('imageNames.dart中一共有${allRows.length} 条记录');
   write(
       '被删除的资源没有被真正的删除哦，他们被存放在了 deleted_assets 目录下，要恢复资源可以根据 deleted_assets 下的日志进行恢复 \n',
       colorType: ConsoleColorType.attention);
@@ -437,102 +437,37 @@ String getVariableValue(String contentData, Map<String, String> assertPath) {
 }
 
 /// 删除无用的文件
-void dealResult() {
-  DateTime now = DateTime.now();
-  String currentTime =
-      '${now.year}_${now.month.toString().padLeft(2, '0')}_${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}_${now.minute.toString().padLeft(2, '0')}_${now.second.toString().padLeft(2, '0')}';
+void delUnusedImage() async {
+  try {
+    final usedAssetsNames = <String>{};
 
-  write('开始删除项目中的无用资源文件', colorType: ConsoleColorType.attention);
-  Helpers.deleteFilesByPaths(
-    paths: unUsedAssetsPaths,
-    assetFolderName: assetsFolderPath,
-    deletedAssetFolderName: '$deletedAssetFolderName/$currentTime/from_project',
-  );
-
-  write('开始删除 imageNames.dart 中的无用资源文件', colorType: ConsoleColorType.attention);
-
-  /// 要处理的数据
-  // for (String key in unUsedFilePath.keys) {
-  //    print('未在项目中使用的资源 key: $key , value: ${unUsedFilePath[key]} , record: ${itemRecords[key]}');
-  //  }
-  // key:  ImageNames.iconShare ,
-  // value: /Users/light/IdeaProjects/AnswerPlanet/lib/resources/newImages/iconShare.png ,
-  // record: static const String iconShare = newImageBasePath + '/iconShare.png';
-  /// 数据处理流程
-  // 1.在deletedAssetFolderName目录创建 deal文件，文件名 deal_imageNames_时间_records , deal_imageNames_时间_log
-  // 2.对数据逐条进行处理，操作 写入文件 deal_imageNames_时间_records , deal_imageNames_时间_log
-
-  /// 删文件
-  Helpers.deleteFilesByPaths(
-    paths: unUsedFilePath.values,
-    assetFolderName: assetsFolderPath,
-    deletedAssetFolderName:
-        '$deletedAssetFolderName/$currentTime/from_imageNames/files',
-  );
-
-  File recordFile =
-      File('$deletedAssetFolderName/$currentTime/from_imageNames/records');
-  recordFile.createSync(recursive: true);
-  File logFile =
-      File('$deletedAssetFolderName/$currentTime/from_imageNames/log');
-  var logSink = logFile.openWrite();
-  var recordSink = recordFile.openWrite();
-
-  ///imageNames.dart中变量的处理
-  for (String key in unUsedFilePath.keys) {
-    // write(
-    //     '删除文件 key: $key value: ${unUsedFilePath[key]} \n record: ${itemRecords[key]}\n',
-    //     colorType: ConsoleColorType.info);
-
-    ///删除 imageNames.darth中的记录
-    if (itemRecords[key] != null) {
-      imageNamesString =
-          imageNamesString.replaceFirst('  ${itemRecords[key]!}\n', '');
-    }
-
-    ///处理日志
-    logSink.write(
-        '删除文件\n key: $key \n value: ${unUsedFilePath[key]} \n record: ${itemRecords[key]}\n\n');
-    recordSink.write('${itemRecords[key]}\n');
-  }
-
-  Set<String> unUsedSpecialPathData = {};
-
-  ///imageNames.dart中数组和方法的处理
-  for (String key in unUsedSpecialPath.keys) {
-    write(
-        '删除文件 key: $key , value: ${unUsedSpecialPath[key]} \n record: ${itemRecords[key]}\n');
-
-    ///删除 imageNames.darth中的记录
-    if (itemRecords[key] != null) {
-      imageNamesString =
-          imageNamesString.replaceFirst('  ${itemRecords[key]!}\n', '');
-    }
-    if (unUsedSpecialPath[key] != null) {
-      logSink.write('删除文件\n key: $key \n ');
-      logSink.write('value:\n ');
-      for (String fileKey in unUsedSpecialPath[key]!) {
-        unUsedSpecialPathData.add(fileKey);
-        logSink.write('    $fileKey \n ');
+    final assetsFilesNames = assetsFiles.keys;
+    final assetsFilesNamesWithoutAlreadyUsed = assetsFilesNames.where(
+      (element) => !usedAssetsNames.contains(element),
+    );
+    for (final assetFileName in assetsFilesNamesWithoutAlreadyUsed) {
+      if (imageNamesString.contains(assetFileName)) {
+        usedAssetsNames.add(assetFileName);
       }
-      logSink.write('record: ${itemRecords[key]}\n\n');
     }
-    recordSink.write('${itemRecords[key]}\n');
+
+    print('项目文件扫描结束');
+
+    /// 扫描项目文件，得出的扫描结果
+    final unUsedAssets = assetsFiles.entries
+        .where((element) => !usedAssetsNames.contains(element.key));
+    final unUsedAssetsNames = unUsedAssets.map((asset) => asset.key);
+    final unUsedAssetsPaths = unUsedAssets.map((asset) => asset.value);
+
+    assetsFilesCount = assetsFiles.length;
+    unUsedAssetsCount = unUsedAssetsNames.length;
+
+    Helpers.deleteFilesByPaths(
+      paths: unUsedAssetsPaths,
+      assetFolderName: assetsFolderPath,
+      deletedAssetFolderName: '$deletedAssetFolderName/$currentTime/files',
+    );
+  } on Exception catch (e) {
+    stdout.addError('$e');
   }
-
-  Helpers.deleteFilesByPaths(
-    paths: unUsedSpecialPathData,
-    assetFolderName: assetsFolderPath,
-    deletedAssetFolderName:
-        '$deletedAssetFolderName/$currentTime/from_imageNames/files',
-  );
-
-  recordSink.close();
-  logSink.close();
-
-  File imageNamesFile = File(imageNamesPath);
-  imageNamesFile
-      .writeAsString(imageNamesString)
-      .then((_) => print('imageNames.dart 写入成功'))
-      .catchError((error) => print('imageNames.dart 写入失败: $error'));
 }
