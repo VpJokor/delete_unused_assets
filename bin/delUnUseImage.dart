@@ -3,6 +3,7 @@ import 'dart:io';
 import 'helpers/console.dart';
 import 'helpers/helpers.dart';
 
+/// 删除项目中无用的图片
 /// 脚本的配置信息
 /// 使用前一定一定要记得检查脚本配置
 /// 注意 注意 ！！！
@@ -40,6 +41,7 @@ final ignoreDirectories = [
   'build',
   'ios',
   'web',
+  '.idea',
   '.dart_tool',
   '.git',
   '.gradle',
@@ -53,6 +55,17 @@ final ignoreDirectories = [
 /// 删除 imageNames.dart 里的相关记录
 /// 全局扫删除无用记录
 void main(List<String> arguments) async {
+  initFiles();
+  scanImageNames();
+  delFromImageNames();
+  delUnusedImage();
+}
+
+String currentTime = '';
+void initFiles() {
+  DateTime now = DateTime.now();
+  currentTime =
+      '${now.year}_${now.month.toString().padLeft(2, '0')}_${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}_${now.minute.toString().padLeft(2, '0')}_${now.second.toString().padLeft(2, '0')}';
   File imageNamesFile = File(imageNamesPath);
   if (imageNamesFile.existsSync()) {
     imageNamesString = imageNamesFile.readAsStringSync();
@@ -64,19 +77,6 @@ void main(List<String> arguments) async {
     write('找不到文件 imageNames.dart ', colorType: ConsoleColorType.error);
     return;
   }
-
-  /// 资源文件
-  assetsFiles =
-      Helpers.getFilesNameWithPath(Directory(assetsFolderPath), true, {});
-  dealImageNames();
-}
-
-String currentTime = '';
-void dealImageNames() {
-  /// 对imageNames.dart进行备份
-  DateTime now = DateTime.now();
-  currentTime =
-      '${now.year}_${now.month.toString().padLeft(2, '0')}_${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}_${now.minute.toString().padLeft(2, '0')}_${now.second.toString().padLeft(2, '0')}';
   File imageNamesBak =
       File('$deletedAssetFolderName/$currentTime/imageNames.dart.bak');
   imageNamesBak.createSync(recursive: true);
@@ -90,9 +90,8 @@ void dealImageNames() {
     {},
     ignoreDirectories: ignoreDirectories,
   );
-  scanImageNames();
-  delFromImageNames();
-  delUnusedImage();
+  assetsFiles =
+      Helpers.getFilesNameWithPath(Directory(assetsFolderPath), true, {});
 }
 
 ///对ImgeNames.dart进行扫描
